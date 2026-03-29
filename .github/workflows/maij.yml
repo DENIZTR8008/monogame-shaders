@@ -1,0 +1,37 @@
+name: Build MonoGame Shaders
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Install MGCB
+      run: |
+        dotnet tool install --global dotnet-mgcb
+      shell: bash
+    
+    - name: Build Android
+      run: |
+        cd Content
+        mgcb Content.mgcb /platform:Android /outputDir:../bin/Android
+    
+    - name: Upload Android
+      uses: actions/upload-artifact@v4
+      with:
+        name: Shaders-Android
+        path: bin/Android/**/*.xnb
+    
+    - name: Upload DesktopGL  
+      uses: actions/upload-artifact@v4
+      with:
+        name: Shaders-DesktopGL
+        path: bin/DesktopGL/**/*.xnb
