@@ -15,23 +15,21 @@ jobs:
         dotnet-version: '8.0.x'
     
     - name: Install MGCB
-      run: |
-        dotnet tool install --global dotnet-mgcb
-      shell: bash
+      run: dotnet tool install --global dotnet-mgcb
     
     - name: Build Android
-      run: |
-        cd Content
-        mgcb Content.mgcb /platform:Android /outputDir:../bin/Android
+      run: mgcb Content.mgcb /platform:Android /outputDir:bin/Android
     
-    - name: Upload Android
-      uses: actions/upload-artifact@v4
+    - name: Build DesktopGL
+      run: mgcb Content_DesktopGL.mgcb /platform:DesktopGL /outputDir:bin/DesktopGL
+    
+    - uses: actions/upload-artifact@v4
       with:
         name: Shaders-Android
         path: bin/Android/**/*.xnb
     
-    - name: Upload DesktopGL  
-      uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v4
       with:
         name: Shaders-DesktopGL
         path: bin/DesktopGL/**/*.xnb
+        
