@@ -1,5 +1,4 @@
-// Additive Shader for MonoGame Android
-// BlendState: Additive
+// Hue Shift Shader for MonoGame Android
 
 #if OPENGL
     #define VS_SHADERMODEL vs_3_0
@@ -19,6 +18,28 @@ sampler TextureSampler = sampler_state
     AddressU = Clamp;
     AddressV = Clamp;
 };
+
+float HueShift; // 0.0 to 1.0
+float Saturation = 1.0;
+float Brightness = 1.0;
+
+float3 RGBtoHSV(float3 rgb)
+{
+    float4 K = float4(0.0, -1.0/3.0, 2.0/3.0, -1.0);
+    float4 p = lerp(float4(rgb.bg, K.wz), float4(rgb.gb, K.xy), step(rgb.b, rgb.g));
+    float4 q = lerp(float4(p.xyw, rgb.r), float4(rgb.r, p.yzx), step(p.x, rgb.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return float3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+float3 HSVtoRGB(float3 hsv)
+{
+    float4 K = float4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    float3 p = abs(frac(hsv.xxx + K.xyz) * 6.0 - K.www);
+    return hsv.z * lerp(K.xxx, saturate(p - K.xxx), hsv.y);
+}
 
 struct VertexShaderInput
 {
@@ -45,8 +66,15 @@ VertexShaderOutput MainVS(VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    float4 texColor = tex2D(TextureSampler, input.TexCoord);
-    return texColor * input.Color;
+    float4 texColor = tex2D(TextureSampler, input.TexCoord) * input.Color;
+
+    float3 hsv = RGBtoHSV(texColor.rgb);
+    hsv.x = frac(hsv.x + HueShift);
+    hsv.y *= Saturation;
+    hsv.z *= Brightness;
+
+    float3 rgb = HSVtoRGB(hsv);
+    return float4(rgb, texColor.a);
 }
 
 technique Technique1

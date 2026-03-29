@@ -1,5 +1,5 @@
-// Additive Shader for MonoGame Android
-// BlendState: Additive
+// Dither Shader for MonoGame Android
+// Ordered dithering effect
 
 #if OPENGL
     #define VS_SHADERMODEL vs_3_0
@@ -14,10 +14,21 @@ texture Texture;
 sampler TextureSampler = sampler_state
 {
     Texture = <Texture>;
-    MinFilter = Linear;
-    MagFilter = Linear;
+    MinFilter = Point;
+    MagFilter = Point;
     AddressU = Clamp;
     AddressV = Clamp;
+};
+
+float DitherScale = 1.0;
+float4 Color1;
+float4 Color2;
+
+static const float DitherMatrix[16] = {
+    0.0, 8.0, 2.0, 10.0,
+    12.0, 4.0, 14.0, 6.0,
+    3.0, 11.0, 1.0, 9.0,
+    15.0, 7.0, 13.0, 5.0
 };
 
 struct VertexShaderInput
@@ -32,6 +43,7 @@ struct VertexShaderOutput
     float4 Position : SV_POSITION;
     float4 Color : COLOR0;
     float2 TexCoord : TEXCOORD0;
+    float4 ScreenPos : TEXCOORD1;
 };
 
 VertexShaderOutput MainVS(VertexShaderInput input)
@@ -40,13 +52,28 @@ VertexShaderOutput MainVS(VertexShaderInput input)
     output.Position = mul(input.Position, WorldViewProjection);
     output.Color = input.Color;
     output.TexCoord = input.TexCoord;
+    output.ScreenPos = output.Position;
     return output;
 }
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    float4 texColor = tex2D(TextureSampler, input.TexCoord);
-    return texColor * input.Color;
+    float4 texColor = tex2D(TextureSampler, input.TexCoord) * input.Color;
+
+    float2 screenCoord = input.ScreenPos.xy / input.ScreenPos.w;
+    float2 pixelCoord = screenCoord * DitherScale;
+
+    int x = int(abs(pixelCoord.x)) % 4;
+    int y = int(abs(pixelCoord.y)) % 4;
+    int index = y * 4 + x;
+
+    float threshold = DitherMatrix[index] / 16.0;
+    float gray = dot(texColor.rgb, float3(0.299, 0.587, 0.114));
+
+    float4 result = gray > threshold ? Color1 : Color2;
+    result.a = texColor.a;
+
+    return result;
 }
 
 technique Technique1
