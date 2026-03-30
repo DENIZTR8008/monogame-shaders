@@ -8,12 +8,18 @@ jobs:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
+    
     - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-    - run: dotnet tool install --global dotnet-mgcb
-    - run: mgcb Content.mgcb /platform:DesktopGL /outputDir:bin/DesktopGL
+    
+    - name: Install MGCB 3.8.1.303
+      run: dotnet tool install --global dotnet-mgcb --version 3.8.1.303
+    
+    - name: Build Android Shaders
+      run: mgcb Content.mgcb /platform:Android /outputDir:bin/Android
+    
     - uses: actions/upload-artifact@v4
       with:
-        name: Shaders-DesktopGL
-        path: bin/DesktopGL/**/*.xnb
+        name: Shaders-Android
+        path: bin/Android/**/*.xnb
