@@ -1,6 +1,4 @@
-// Dither Shader for MonoGame Android
-// Ordered dithering effect
-
+// Dither Shader for MonoGame Android - FIXED
 #if OPENGL
     #define VS_SHADERMODEL vs_3_0
     #define PS_SHADERMODEL ps_3_0
@@ -9,18 +7,19 @@
     #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
-matrix WorldViewProjection;
-texture Texture;
+float4x4 WorldViewProjection;
+texture Texture : register(s0);
 sampler TextureSampler = sampler_state
 {
     Texture = <Texture>;
     MinFilter = Point;
     MagFilter = Point;
+    MipFilter = Point;
     AddressU = Clamp;
     AddressV = Clamp;
 };
 
-float DitherScale = 1.0;
+float DitherScale;
 float4 Color1;
 float4 Color2;
 
@@ -40,7 +39,7 @@ struct VertexShaderInput
 
 struct VertexShaderOutput
 {
-    float4 Position : SV_POSITION;
+    float4 Position : POSITION0;
     float4 Color : COLOR0;
     float2 TexCoord : TEXCOORD0;
     float4 ScreenPos : TEXCOORD1;
@@ -56,7 +55,7 @@ VertexShaderOutput MainVS(VertexShaderInput input)
     return output;
 }
 
-float4 MainPS(VertexShaderOutput input) : COLOR
+float4 MainPS(VertexShaderOutput input) : COLOR0
 {
     float4 texColor = tex2D(TextureSampler, input.TexCoord) * input.Color;
 
