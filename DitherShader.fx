@@ -2,17 +2,15 @@
     #define SV_POSITION POSITION
     #define VS_SHADERMODEL vs_3_0
     #define PS_SHADERMODEL ps_3_0
-    #define lerp mix  // GLSL использует mix вместо lerp
-    #define frac fract // GLSL использует fract вместо frac
 #else
     #define VS_SHADERMODEL vs_4_0_level_9_1
     #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
-float2 ditherSize;       // ps_c0.xy
-float2 screenSize;       // ps_c1.xy
-float  scale;            // ps_c2.x
-float  flipYPos;         // ps_c3.x
+float2 ditherSize;
+float2 screenSize;
+float  scale;
+float  flipYPos;
 
 Texture2D SpriteTexture;
 sampler2D SpriteTextureSampler = sampler_state { Texture = <SpriteTexture>; };
@@ -32,7 +30,7 @@ struct VertexShaderOutput
     float4 Position : SV_POSITION;
     float4 Color    : COLOR0;
     float2 TexCoord : TEXCOORD0;
-    float2 vPos     : TEXCOORD1;  // Замена VPOS
+    float2 vPos     : TEXCOORD1;
 };
 
 VertexShaderOutput MainVS(VertexShaderInput input)
@@ -41,7 +39,6 @@ VertexShaderOutput MainVS(VertexShaderInput input)
     output.Position = input.Position;
     output.Color = input.Color;
     output.TexCoord = input.TexCoord;
-    // Преобразуем из clip space в screen space
     output.vPos = input.Position.xy * float2(0.5, -0.5) + float2(0.5, 0.5);
     output.vPos *= screenSize;
     return output;
@@ -49,7 +46,6 @@ VertexShaderOutput MainVS(VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    // Constants
     const float c4x = 0.5;
     const float c4y = 50.0;
     const float c4z = 0.02;
@@ -60,11 +56,10 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 
     float2 fragCoord = input.vPos;
 
-    // Optionally flip Y
+    // Use lerp for DirectX (MGFXC will convert to mix for OpenGL automatically)
     float flippedY = lerp(fragCoord.y, screenSize.y - fragCoord.y, flipYPos);
     float2 r1xy = float2(fragCoord.x, flippedY);
 
-    // Compute dither cell center UV
     float invScaleX = 1.0 / scale;
     float2 r0yz = r1xy * invScaleX;
 
@@ -78,26 +73,22 @@ float4 MainPS(VertexShaderOutput input) : COLOR
     r1zw = r1zw - r2xy;
     float2 r0yw = (-ditherSize * r1zw) + r0yz;
 
-    // Compute threshold
     r0x = (input.Color.a * -r0x) + r0yz.y;
     r0x = (r0x + c4y) * c4z;
     float r1z = max(-r0x, c4w);
     r0x = min(r1z, c5x);
 
-    // Sample dither pattern
     float2 ditherUV = r1xy2 * r0yw;
     float4 r1 = tex2D(ditherTexSampler, ditherUV);
     r0x = r0x + r1.x;
 
-    // Alpha threshold
     float outAlpha = (r0x >= 0.0) ? c5y : c5z;
 
-    // Sample sprite
     float4 sprite = tex2D(SpriteTextureSampler, input.TexCoord);
 
     float4 result;
     result.xyz = sprite.xyz * input.Color.rgb;
-    result.w   = outAlpha;
+    result.w = outAlpha;
     return result;
 }
 
@@ -106,6 +97,6 @@ technique Technique1
     pass Pass1
     {
         VertexShader = compile VS_SHADERMODEL MainVS();
-        PixelShader  = compile PS_SHADERMODEL MainPS();
+        PixelShader = compile PS_SHADERMODEL MainPS();
     }
 }
