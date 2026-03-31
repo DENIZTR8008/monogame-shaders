@@ -2,18 +2,17 @@
     #define SV_POSITION POSITION
     #define VS_SHADERMODEL vs_3_0
     #define PS_SHADERMODEL ps_3_0
+    #define lerp mix  // GLSL использует mix вместо lerp
+    #define frac fract // GLSL использует fract вместо frac
 #else
     #define VS_SHADERMODEL vs_4_0_level_9_1
     #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
 float2 ditherSize;       // ps_c0.xy
-float2 screenSize;       // ps_c1.xy  (c1.y also used as screenHeight)
+float2 screenSize;       // ps_c1.xy
 float  scale;            // ps_c2.x
-float  flipYPos;         // ps_c3.x  (0 = normal, 1 = flip Y)
-
-// ps_c4 = (0.5, 50.0, 0.02, -1.1)  -- hardcoded constants
-// ps_c5 = (0.1,  1.0, 0.0,  0.0)  -- hardcoded constants
+float  flipYPos;         // ps_c3.x
 
 Texture2D SpriteTexture;
 sampler2D SpriteTextureSampler = sampler_state { Texture = <SpriteTexture>; };
@@ -21,14 +20,34 @@ sampler2D SpriteTextureSampler = sampler_state { Texture = <SpriteTexture>; };
 Texture2D ditherTex;
 sampler2D ditherTexSampler = sampler_state { Texture = <ditherTex>; };
 
+struct VertexShaderInput
+{
+    float4 Position : POSITION0;
+    float4 Color    : COLOR0;
+    float2 TexCoord : TEXCOORD0;
+};
+
 struct VertexShaderOutput
 {
     float4 Position : SV_POSITION;
     float4 Color    : COLOR0;
     float2 TexCoord : TEXCOORD0;
+    float2 vPos     : TEXCOORD1;  // Замена VPOS
 };
 
-float4 MainPS(VertexShaderOutput input, float2 vPos : VPOS) : COLOR
+VertexShaderOutput MainVS(VertexShaderInput input)
+{
+    VertexShaderOutput output;
+    output.Position = input.Position;
+    output.Color = input.Color;
+    output.TexCoord = input.TexCoord;
+    // Преобразуем из clip space в screen space
+    output.vPos = input.Position.xy * float2(0.5, -0.5) + float2(0.5, 0.5);
+    output.vPos *= screenSize;
+    return output;
+}
+
+float4 MainPS(VertexShaderOutput input) : COLOR
 {
     // Constants
     const float c4x = 0.5;
@@ -39,7 +58,7 @@ float4 MainPS(VertexShaderOutput input, float2 vPos : VPOS) : COLOR
     const float c5y = 1.0;
     const float c5z = 0.0;
 
-    float2 fragCoord = vPos;
+    float2 fragCoord = input.vPos;
 
     // Optionally flip Y
     float flippedY = lerp(fragCoord.y, screenSize.y - fragCoord.y, flipYPos);
@@ -86,6 +105,7 @@ technique Technique1
 {
     pass Pass1
     {
-        PixelShader = compile PS_SHADERMODEL MainPS();
+        VertexShader = compile VS_SHADERMODEL MainVS();
+        PixelShader  = compile PS_SHADERMODEL MainPS();
     }
 }

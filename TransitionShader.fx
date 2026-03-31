@@ -7,14 +7,21 @@
     #define PS_SHADERMODEL ps_4_0_level_9_1
 #endif
 
-// All constants are hardcoded (no uniforms in this shader)
-// ps_c0 = (1.0, 0.15625, 1.15625, 6.4)
+// Constants as uniform for flexibility
+float4 transConstants; // (1.0, 0.15625, 1.15625, 6.4)
 
 Texture2D SpriteTexture;
 sampler2D SpriteTextureSampler = sampler_state { Texture = <SpriteTexture>; };
 
 Texture2D transMap;
 sampler2D transMapSampler = sampler_state { Texture = <transMap>; };
+
+struct VertexShaderInput
+{
+    float4 Position : POSITION0;
+    float4 Color    : COLOR0;
+    float2 TexCoord : TEXCOORD0;
+};
 
 struct VertexShaderOutput
 {
@@ -23,9 +30,19 @@ struct VertexShaderOutput
     float2 TexCoord : TEXCOORD0;
 };
 
+VertexShaderOutput MainVS(VertexShaderInput input)
+{
+    VertexShaderOutput output;
+    output.Position = input.Position;
+    output.Color = input.Color;
+    output.TexCoord = input.TexCoord;
+    return output;
+}
+
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    float4 c0 = float4(1.0, 0.15625, 1.15625, 6.4);
+    float4 c0 = transConstants;
+    if (c0.x == 0.0) c0 = float4(1.0, 0.15625, 1.15625, 6.4); // fallback
 
     float4 r0 = tex2D(transMapSampler, input.TexCoord);
 
@@ -54,6 +71,7 @@ technique Technique1
 {
     pass Pass1
     {
-        PixelShader = compile PS_SHADERMODEL MainPS();
+        VertexShader = compile VS_SHADERMODEL MainVS();
+        PixelShader  = compile PS_SHADERMODEL MainPS();
     }
 }
