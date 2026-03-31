@@ -44,8 +44,26 @@ VertexShaderOutput MainVS(VertexShaderInput input)
     return output;
 }
 
+// frac для HLSL, fract для GLSL - используем условное определение
+#if OPENGL
+    #define FRACT fract
+#else
+    #define FRACT frac
+#endif
+
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
+    // Защита от нулевых параметров (MojoShader баг!)
+    float2 _ditherSize = ditherSize;
+    float2 _screenSize = screenSize;
+    float  _scale = scale;
+    float  _flipYPos = flipYPos;
+
+    if (_ditherSize.x < 1.0) _ditherSize = float2(4.0, 4.0);
+    if (_screenSize.x < 1.0) _screenSize = float2(1280.0, 720.0);
+    if (_scale < 0.001) _scale = 1.0;
+    if (_flipYPos < 0.0 || _flipYPos > 1.0) _flipYPos = 0.0;
+
     const float c4x = 0.5;
     const float c4y = 50.0;
     const float c4z = 0.02;
@@ -56,22 +74,22 @@ float4 MainPS(VertexShaderOutput input) : COLOR
 
     float2 fragCoord = input.vPos;
 
-    // Use lerp for DirectX (MGFXC will convert to mix for OpenGL automatically)
-    float flippedY = lerp(fragCoord.y, screenSize.y - fragCoord.y, flipYPos);
+    // lerp работает везде, не меняем!
+    float flippedY = lerp(fragCoord.y, _screenSize.y - fragCoord.y, _flipYPos);
     float2 r1xy = float2(fragCoord.x, flippedY);
 
-    float invScaleX = 1.0 / scale;
+    float invScaleX = 1.0 / _scale;
     float2 r0yz = r1xy * invScaleX;
 
-    float r0x = (screenSize.y * invScaleX) + c4y;
-    float2 r1xy2 = frac(r0yz);
+    float r0x = (_screenSize.y * invScaleX) + c4y;
+    float2 r1xy2 = FRACT(r0yz);
     r0yz = r0yz - r1xy2 + c4x;
 
-    float2 invDither = float2(1.0 / ditherSize.x, 1.0 / ditherSize.y);
+    float2 invDither = float2(1.0 / _ditherSize.x, 1.0 / _ditherSize.y);
     float2 r1zw = r0yz * invDither;
-    float2 r2xy = frac(r1zw);
+    float2 r2xy = FRACT(r1zw);
     r1zw = r1zw - r2xy;
-    float2 r0yw = (-ditherSize * r1zw) + r0yz;
+    float2 r0yw = (-_ditherSize * r1zw) + r0yz;
 
     r0x = (input.Color.a * -r0x) + r0yz.y;
     r0x = (r0x + c4y) * c4z;

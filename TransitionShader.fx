@@ -40,8 +40,10 @@ VertexShaderOutput MainVS(VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
+    // Защита от нулевых констант (MojoShader баг!)
     float4 c0 = transConstants;
-    if (c0.x == 0.0) c0 = float4(1.0, 0.15625, 1.15625, 6.4);
+    if (c0.x == 0.0 && c0.y == 0.0 && c0.z == 0.0 && c0.w == 0.0)
+        c0 = float4(1.0, 0.15625, 1.15625, 6.4);
 
     float4 r0 = tex2D(transMapSampler, input.TexCoord);
     float alpha = input.Color.a;

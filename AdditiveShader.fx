@@ -43,7 +43,12 @@ VertexShaderOutput MainVS(VertexShaderInput input)
 
 float4 MainPS(VertexShaderOutput input) : COLOR
 {
-    float2 screenUV = input.vPos / screenSizeInPixels;
+    // Защита от нулевого screenSizeInPixels (MojoShader не сохраняет дефолты!)
+    float2 screenSize = screenSizeInPixels;
+    if (screenSize.x < 1.0 || screenSize.y < 1.0)
+        screenSize = float2(1280.0, 720.0); // fallback
+
+    float2 screenUV = input.vPos / screenSize;
     float4 s1 = tex2D(baseMaskSampler, screenUV);
     float4 s0 = tex2D(SpriteTextureSampler, input.TexCoord);
 
